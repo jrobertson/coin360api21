@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name = 'coin360api21'
-  s.version = '0.1.0'
+  s.version = '0.2.0'
   s.summary = 'Uses the Coin360 API; unofficial gem. #cryptocurrency'
   s.authors = ['James Robertson']
   s.files = Dir['lib/coin360api21.rb']

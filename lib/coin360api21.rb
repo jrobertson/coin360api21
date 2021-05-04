@@ -5,6 +5,7 @@
 require 'json'
 require 'excon'
 require 'unichron'
+require 'did_you_mean'
 
 
 module Coin360Api21
@@ -31,8 +32,44 @@ module Coin360Api21
       params << 'start=' + timeify(date_start) if date_start
       params << 'end=' + timeify(date_end) if date_end
       params << 'period=' + period if period
-      api_call "/coin/historical?%s" % [params.join('&')]
+      r = api_call "/coin/historical?%s" % [params.join('&')]
+      r.map {|x| OpenStruct.new x}
 
+    end    
+    
+    def info(coin=nil)
+      
+      if not @info then
+        r = api_call "/info/currency"
+        @info = r.map {|x| OpenStruct.new x}
+      end
+      
+      return @info unless coin
+      
+      r = @info.find {|x| x.symbol.downcase == coin || x.name.downcase == coin}
+      
+      return r if r
+      
+      dym = DidYouMean::SpellChecker.new(dictionary: @info.flat_map \
+                            {|x| [x.symbol, x.name]})
+      found = dym.correct(coin)
+      return unless found
+      
+      raise "Did you mean? '%s'" % found.first
+      
+    end
+    
+    def latest(coin=:btc, convert: :usd)
+
+      params = ['coin=' + coin.to_s]
+      params << 'convert=' + convert.to_s
+      api_call "/coin/latest?%s" % [params.join('&')]
+
+    end    
+    
+    def price(coin=:btc)
+      r = latest(coin)
+      r.first.last['quotes']['USD']['price']
     end
 
     private
@@ -40,7 +77,7 @@ module Coin360Api21
     def api_call(api_request)
       
       response = Excon.get(@url_base + api_request)
-      JSON.parse(response.body)
+      JSON.parse(response.body) #
   
     end
 
@@ -65,7 +102,7 @@ module Coin360Api21
     def api_call(api_request)
       
       response = Excon.get(@url_base + api_request)
-      JSON.parse(response.body)
+      OpenStruct.new JSON.parse(response.body)
   
     end
 
